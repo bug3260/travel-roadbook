@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>路书地图 · 行程路线可视化</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">🗺️ <b>路书地图</b><span class="brand-sub">行程路线可视化</span></div>
+  <div class="trip-selector">
+    <select id="tripSelector" title="选择路书"></select>
+    <button id="btnRename" class="mini" title="重命名路书">✏️</button>
+    <button id="btnDeleteTrip" class="mini danger" title="删除当前路书">🗑️</button>
+  </div>
+  <div class="actions">
+    <button id="btnNew" class="btn">＋ 新建</button>
+    <button id="btnParse" class="btn primary">📥 识别路书</button>
+    <button id="btnGenerate" class="btn accent">✨ 生成路书</button>
+    <button id="btnImport" class="btn">导入</button>
+    <button id="btnExport" class="btn">导出JSON</button>
+    <button id="btnLongImage" class="btn">📷 导出长图</button>
+    <button id="btnDemo" class="btn">示例</button>
+    <button id="btnSettings" class="btn">⚙️ 设置</button>
+  </div>
+</header>
+
+<main id="main">
+  <aside id="sidebar">
+    <div id="tripHead">
+      <div id="tripName" class="trip-name">未命名路书</div>
+      <div id="tripMeta" class="trip-meta"></div>
+      <div id="tripWarn" class="trip-warn hidden"></div>
+    </div>
+    <div id="timeline"></div>
+    <div id="sidebarFooter">
+      <button id="btnAddStop" class="btn small">＋ 添加地点</button>
+      <button id="btnFitAll" class="btn small">🗺️ 全程视图</button>
+    </div>
+  </aside>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div id="mapHint" class="hidden">
+      <div class="hint-box">
+        <div class="hint-title">🗺️ 未配置高德地图 Key</div>
+        <div class="hint-text">配置后可在地图上标注景点、酒店与路线（免费申请约 5 分钟）。<br>解析、编辑与导出功能仍可使用。</div>
+        <button id="btnHintSettings" class="btn primary">打开设置</button>
+      </div>
+    </div>
+    <div id="legend" class="hidden"></div>
+    <div id="viewChips"></div>
+    <div id="geoProgress" class="hidden"><span id="geoProgressText"></span></div>
+  </div>
+</main>
+
+<!-- 识别路书 -->
+<div class="modal-mask hidden" id="modalParse">
+  <div class="modal">
+    <div class="modal-head"><h3>📥 识别路书</h3><button class="modal-close" data-close="modalParse">✕</button></div>
+    <div class="modal-body">
+      <div id="dropZone" class="drop-zone">
+        <div class="dz-icon">📄</div>
+        <div>拖入路书文件，或 <button id="btnPickFile" class="link-btn">选择文件</button></div>
+        <div class="dz-tip">支持 .txt / .md / .docx / .pdf</div>
+        <div id="dzFileInfo" class="dz-file hidden"></div>
+      </div>
+      <div class="or-sep"><span>或直接粘贴文字</span></div>
+      <textarea id="parseText" rows="10" placeholder="粘贴路书内容，例如：&#10;川西小环线3日自驾&#10;第1天&#10;08:00 成都出发&#10;11:00 途经泸定桥&#10;18:00 入住磨西古镇酒店&#10;第2天&#10;09:00 游览海螺沟景区&#10;……"></textarea>
+      <div id="parseStatus" class="status-line"></div>
+    </div>
+    <div class="modal-foot">
+      <span id="parseModeHint" class="foot-hint"></span>
+      <button class="btn" data-close="modalParse">取消</button>
+      <button id="btnDoParse" class="btn primary">开始解析</button>
+    </div>
+  </div>
+</div>
+
+<!-- 生成路书 -->
+<div class="modal-mask hidden" id="modalGenerate">
+  <div class="modal">
+    <div class="modal-head"><h3>✨ 生成路书</h3><button class="modal-close" data-close="modalGenerate">✕</button></div>
+    <div class="modal-body form-grid">
+      <label>目的地<input id="genDest" type="text" placeholder="如：成都 / 云南 / 川西"></label>
+      <label>出发地<input id="genStart" type="text" placeholder="默认与目的地相同"></label>
+      <label>天数<input id="genDays" type="number" min="1" max="30" value="3"></label>
+      <label class="span2">偏好与要求<textarea id="genPrefs" rows="3" placeholder="如：自驾、亲子、美食、节奏轻松、预算中等……"></textarea></label>
+      <div id="genStatus" class="status-line span2"></div>
+    </div>
+    <div class="modal-foot">
+      <span id="genModeHint" class="foot-hint"></span>
+      <button class="btn" data-close="modalGenerate">取消</button>
+      <button id="btnDoGenerate" class="btn accent">开始生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="modal-mask hidden" id="modalSettings">
+  <div class="modal">
+    <div class="modal-head"><h3>⚙️ 设置</h3><button class="modal-close" data-close="modalSettings">✕</button></div>
+    <div class="modal-body">
+      <fieldset>
+        <legend>🧠 智能解析 / 生成引擎</legend>
+        <div class="form-grid">
+          <label class="span2">服务商预设
+            <select id="setProvider">
+              <option value="deepseek">DeepSeek（默认，国内直连）</option>
+              <option value="openai">OpenAI</option>
+              <option value="custom">自定义（OpenAI 兼容）</option>
+            </select>
+          </label>
+          <label class="span2">接口地址<input id="setBaseUrl" type="text" placeholder="https://api.deepseek.com"></label>
+          <label>模型<input id="setModel" type="text" placeholder="deepseek-v4-flash"></label>
+          <label>API Key<input id="setApiKey" type="password" placeholder="sk-...（仅保存在本机浏览器）"></label>
+          <div class="hint-text span2">DeepSeek Key 在 platform.deepseek.com 免费注册获取；OpenAI Key 在 platform.openai.com 获取。没有 Key 时使用内置规则解析，生成功能只提供空骨架。</div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>🗺️ 高德地图</legend>
+        <div class="form-grid">
+          <label>JS API Key<input id="setAmapKey" type="text" placeholder="高德开放平台申请"></label>
+          <label>安全密钥（jscode）<input id="setAmapCode" type="text" placeholder="2021年后必须填写"></label>
+          <div class="hint-text span2">在 console.amap.com 创建「Web端(JS API)」应用获取 Key 与安全密钥（2021 年后申请的 Key 必须填安全密钥），并开通「Web服务 API」。本应用使用 JS API 1.4.15，不强制域名白名单，白名单可留空；如需填写只能用纯域名（如 localhost，file:// 与带端口的写法会被控制台拒绝）。Key 仅保存在本机浏览器。</div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" data-close="modalSettings">取消</button>
+      <button id="btnSaveSettings" class="btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑地点 -->
+<div class="modal-mask hidden" id="modalEdit">
+  <div class="modal">
+    <div class="modal-head"><h3>✏️ 编辑地点</h3><button class="modal-close" data-close="modalEdit">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label>天数<input id="editDay" type="number" min="1" max="30"></label>
+        <label>类型
+          <select id="editType">
+            <option value="start">起点</option>
+            <option value="attraction">景点</option>
+            <option value="waypoint">途经点</option>
+            <option value="hotel">酒店</option>
+            <option value="food">餐饮</option>
+            <option value="end">终点</option>
+          </select>
+        </label>
+        <label class="span2">名称<input id="editName" type="text" placeholder="用于地图定位的地点名称"></label>
+        <label>到达时间<input id="editArrive" type="time"></label>
+        <label>离开时间<input id="editLeave" type="time"></label>
+        <label>前往下一站交通
+          <select id="editTransit">
+            <option value="drive">🚗 驾车</option>
+            <option value="walk">🚶 步行</option>
+            <option value="transit">🚌 公交</option>
+          </select>
+        </label>
+        <label>坐标
+          <div class="coord-row">
+            <input id="editCoord" type="text" placeholder="未定位，点击下方按钮选择" readonly>
+            <button id="btnPickCoord" class="btn small">地图选点</button>
+            <button id="btnPoiPick" class="btn small">POI搜索</button>
+          </div>
+        </label>
+        <label class="span2">备注<textarea id="editNote" rows="2" placeholder="门票、预约、注意事项……"></textarea></label>
+      </div>
+      <div id="editStatus" class="status-line"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="btnDeleteStop">删除</button>
+      <button class="btn" data-close="modalEdit">取消</button>
+      <button id="btnSaveStop" class="btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- POI 搜索 -->
+<div class="modal-mask hidden" id="modalPoi">
+  <div class="modal">
+    <div class="modal-head"><h3>🔍 搜索地点</h3><button class="modal-close" data-close="modalPoi">✕</button></div>
+    <div class="modal-body">
+      <div class="poi-search-row">
+        <input id="poiQuery" type="text" placeholder="输入景点/酒店名称，如：峨眉山、全季酒店">
+        <button id="btnPoiSearch" class="btn primary">搜索</button>
+      </div>
+      <div class="poi-row">
+        <label>添加到第 <input id="poiDay" type="number" min="1" value="1" style="width:60px"> 天</label>
+        <label>类型
+          <select id="poiType">
+            <option value="attraction">景点</option>
+            <option value="hotel">酒店</option>
+            <option value="food">餐饮</option>
+            <option value="waypoint">途经点</option>
+            <option value="start">起点</option>
+            <option value="end">终点</option>
+          </select>
+        </label>
+      </div>
+      <div id="poiStatus" class="status-line"></div>
+      <div id="poiResults" class="poi-results"></div>
+    </div>
+    <div class="modal-foot"><button class="btn" data-close="modalPoi">关闭</button></div>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+<input type="file" id="fileInput" hidden accept=".txt,.md,.docx,.pdf,application/json">
+
+<!-- 长图导出布局（仅在导出时显示） -->
+<div id="exportArea" class="hidden">
+  <div id="exportTitle"></div>
+  <div id="exportTimeline"></div>
+</div>
+
+<script src="roadbook-core.js"></script>
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf.worker.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="lib/html2canvas.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

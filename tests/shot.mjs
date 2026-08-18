@@ -1,0 +1,16 @@
+﻿import { chromium } from 'playwright';
+import { fileURLToPath, pathToFileURL } from 'url';
+import path from 'path';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const INDEX = pathToFileURL(path.join(__dirname, '..', 'index.html')).href;
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await page.goto(INDEX, { waitUntil: 'load' });
+await page.click('#btnDemo');
+await page.waitForTimeout(400);
+await page.screenshot({ path: path.join(__dirname, 'shot-demo.png') });
+await page.click('#btnParse');
+await page.waitForTimeout(200);
+await page.screenshot({ path: path.join(__dirname, 'shot-parse.png') });
+await browser.close();
+console.log('shots saved');
