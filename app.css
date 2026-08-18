@@ -443,3 +443,30 @@ body.exporting #exportArea { display: block; }
 @media (hover: none) {
   .stop-item .stop-ops { display: flex; }
 }
+/* ---------- 手机布局（<=768px）：地图在上、时间轴在下 ---------- */
+@media (max-width: 768px) {
+  body { height: 100vh; height: 100dvh; }
+  #topbar { height: auto; min-height: 48px; flex-wrap: wrap; gap: 4px 8px; padding: 6px 8px; }
+  .brand { font-size: 14px; }
+  .trip-selector { flex: 1 1 auto; min-width: 0; }
+  #tripSelector { max-width: 100%; }
+  .actions { width: 100%; justify-content: flex-start; }
+  .btn { padding: 9px 12px; }
+
+  #main { flex-direction: column-reverse; }
+  #sidebar { width: 100%; flex: 0 0 auto; max-height: 44%; min-height: 150px; border-right: none; border-top: 1px solid var(--border); }
+  .stop-item .stop-ops { display: flex; }
+  #mapWrap { min-height: 0; }
+
+  #legend { left: 8px; top: 8px; padding: 6px 8px; font-size: 10px; line-height: 1.7; }
+  #viewChips { top: 8px; right: 8px; max-width: 72%; }
+  #geoProgress { font-size: 11px; max-width: 88vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hint-box { max-width: calc(100vw - 32px); padding: 20px 16px; }
+
+  .modal { width: calc(100vw - 16px); max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); border-radius: 12px; }
+  .modal-body { padding: 2px 12px 10px; }
+  .modal-foot { padding: 10px 12px; flex-wrap: wrap; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .span2 { grid-column: span 1; }
+  #toast { bottom: 20px; max-width: 88vw; }
+}

@@ -246,6 +246,33 @@ try {
   const warnText = await page.textContent('#tripWarn');
   check('未定位警告提示', warnText.includes('未能自动定位') && warnText.includes('重试定位'), warnText);
 
+  // 16. 手机视口布局：地图在上、时间轴在下、操作按钮可见
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(500);
+  await page.click('#btnDemo');
+  await page.waitForTimeout(500);
+  const m = await page.evaluate(() => {
+    const vh = window.innerHeight;
+    const map = document.querySelector('#mapWrap').getBoundingClientRect();
+    const sb = document.querySelector('#sidebar').getBoundingClientRect();
+    const ops = document.querySelector('.stop-item .stop-ops');
+    return {
+      vh,
+      mapH: Math.round(map.height),
+      mapTop: Math.round(map.top),
+      sbTop: Math.round(sb.top),
+      sbBottom: Math.round(sb.bottom),
+      opsDisplay: ops ? getComputedStyle(ops).display : 'none',
+      hScroll: document.documentElement.scrollWidth > document.documentElement.clientWidth
+    };
+  });
+  check('手机布局地图在上', m.mapTop >= 0 && m.mapH >= Math.round(m.vh * 0.4), JSON.stringify(m));
+  check('手机布局时间轴在下', m.sbTop >= m.vh * 0.45 && Math.abs(m.sbBottom - m.vh) <= 1, JSON.stringify(m));
+  check('手机操作按钮可见', m.opsDisplay === 'flex', 'ops=' + m.opsDisplay);
+  check('手机无横向滚动', !m.hScroll);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
 } catch (e) {
   fail++;
   fails.push('异常: ' + e.message);
